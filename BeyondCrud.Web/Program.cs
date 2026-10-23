@@ -12,6 +12,8 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddOutputCache();
 
+builder.Services.AddHttpClient("apiservice", client => client.BaseAddress = new Uri("https+http://apiservice"));
+
 
 var app = builder.Build();
 

@@ -25,13 +25,13 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/", () => "API service is running. POST to /demo to see sample data.");
 
-app.MapPost("/demo", () =>
+app.MapPost("/demo", (string name) =>
 {
     var passenger = new Passenger();
 
     passenger.Register(
         Guid.CreateVersion7(),
-        "Bjarte");
+        name);
 
     return passenger.GetUncommittedEvents();
 });

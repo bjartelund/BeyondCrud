@@ -1,6 +1,5 @@
 @ApiService_HostAddress = http://localhost:5553
 
-POST {{ApiService_HostAddress}}/demo/
+POST {{ApiService_HostAddress}}/demo?name=bjarte
 Accept: application/json
-
 ###

@@ -1,7 +1,45 @@
-﻿@page "/"
+@page "/"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Create passenger</h1>
 
-Welcome to your new app.
+<div class="mb-3">
+    <label for="name" class="form-label">Name</label>
+    <input id="name" class="form-control" @bind="_name" @bind:event="oninput" />
+</div>
+
+<button class="btn btn-primary mb-3" @onclick="CreatePassenger" disabled="@_busy">Create passenger</button>
+
+<div class="mb-3">
+    <label for="response" class="form-label">Response</label>
+    <textarea id="response" class="form-control" rows="10" readonly>@_response</textarea>
+</div>
+
+@code {
+    private string _name = "";
+    private string _response = "";
+    private bool _busy;
+
+    private async Task CreatePassenger()
+    {
+        _busy = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("apiservice");
+            using var response = await client.PostAsync($"/demo?name={Uri.EscapeDataString(_name)}", null);
+            var body = await response.Content.ReadAsStringAsync();
+            _response = $"{(int)response.StatusCode} {response.StatusCode}\n{body}";
+        }
+        catch (Exception ex)
+        {
+            _response = $"Request failed: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
