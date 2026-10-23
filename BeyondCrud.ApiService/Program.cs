@@ -1,3 +1,4 @@
+using BeyondCrud.Domain;
 using BeyondCrud.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,7 +25,16 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/", () => "API service is running. POST to /demo to see sample data.");
 
+app.MapPost("/demo", () =>
+{
+    var passenger = new Passenger();
 
+    passenger.Register(
+        Guid.CreateVersion7(),
+        "Bjarte");
+
+    return passenger.GetUncommittedEvents();
+});
 
 app.MapDefaultEndpoints();
 

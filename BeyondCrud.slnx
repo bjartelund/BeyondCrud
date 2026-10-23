@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="BeyondCrud.ApiService/BeyondCrud.ApiService.csproj" />
   <Project Path="BeyondCrud.AppHost/BeyondCrud.AppHost.csproj" />
+  <Project Path="BeyondCrud.Domain.Tests/BeyondCrud.Domain.Tests.csproj" />
   <Project Path="BeyondCrud.Domain/BeyondCrud.Domain.csproj" />
   <Project Path="BeyondCrud.ServiceDefaults/BeyondCrud.ServiceDefaults.csproj" />
   <Project Path="BeyondCrud.Web/BeyondCrud.Web.csproj" />
