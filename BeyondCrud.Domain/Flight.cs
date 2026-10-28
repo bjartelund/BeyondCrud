@@ -7,12 +7,14 @@ public class Flight
 {
     private readonly List<IDomainEvent> _events = [];
     private readonly List<Guid> _passengerIds = [];
+    private readonly Dictionary<string, Guid> _seats = [];
 
     public Guid Id { get; private set; }
     public string Destination { get; private set; } = "";
     public int Capacity { get; private set; }
     public RegistrationStatus Registration { get; private set; }
     public IReadOnlyList<Guid> PassengerIds => _passengerIds;
+    public IReadOnlyDictionary<string, Guid> Seats => _seats;
 
     public IReadOnlyList<IDomainEvent> GetUncommittedEvents()
         => _events;
@@ -34,7 +36,16 @@ public class Flight
         => Raise(new RegistrationOpened(command.FlightId));
 
     public void RegisterPassenger(RegisterPassenger command)
-        => Raise(new PassengerRegistered(command.FlightId, command.PassengerId, command.Name));
+    {
+        // TODO: reject when registration is not open, the passenger is already registered, or the flight is full
+        Raise(new PassengerRegistered(command.FlightId, command.PassengerId, command.Name));
+    }
+
+    public void AssignSeat(AssignSeat command)
+    {
+        // TODO: reject when the passenger is not registered or the seat is already taken
+        Raise(new SeatAssigned(command.FlightId, command.PassengerId, command.Seat));
+    }
 
     public void CloseRegistration(CloseRegistration command)
         => Raise(new RegistrationClosed(command.FlightId));
@@ -65,6 +76,10 @@ public class Flight
 
             case RegistrationClosed:
                 Registration = RegistrationStatus.Closed;
+                break;
+
+            case SeatAssigned e:
+                _seats[e.Seat] = e.PassengerId;
                 break;
         }
     }

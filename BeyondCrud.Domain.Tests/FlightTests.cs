@@ -7,6 +7,14 @@ public class FlightTests
 {
     private static readonly Guid FlightId = Guid.NewGuid();
 
+    private static Flight OpenFlight(int capacity = 2, params IDomainEvent[] more)
+        => Flight.Rehydrate(
+            [
+                new FlightCreated(FlightId, "Oslo", capacity),
+                new RegistrationOpened(FlightId),
+                ..more
+            ]);
+
     [Test]
     public async Task Create_emits_flight_created_event()
     {
@@ -41,7 +49,7 @@ public class FlightTests
     public async Task RegisterPassenger_emits_passenger_registered_event()
     {
         // Arrange
-        var flight = new Flight();
+        var flight = OpenFlight();
         var passengerId = Guid.NewGuid();
 
         // Act
@@ -120,5 +128,93 @@ public class FlightTests
         // Assert
         await Assert.That(flight.GetUncommittedEvents().Single())
             .IsEqualTo(new RegistrationOpened(FlightId));
+    }
+
+    [Test]
+    public async Task RegisterPassenger_is_rejected_when_registration_is_closed()
+    {
+        // Arrange
+        var flight = OpenFlight(2, new RegistrationClosed(FlightId));
+
+        // Act / Assert
+        await Assert.That(() => flight.RegisterPassenger(new RegisterPassenger(FlightId, Guid.NewGuid(), "Ada")))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task RegisterPassenger_is_rejected_when_registration_has_not_opened()
+    {
+        // Arrange
+        var flight = Flight.Rehydrate([new FlightCreated(FlightId, "Oslo", 2)]);
+
+        // Act / Assert
+        await Assert.That(() => flight.RegisterPassenger(new RegisterPassenger(FlightId, Guid.NewGuid(), "Ada")))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task RegisterPassenger_is_rejected_for_duplicate_passenger()
+    {
+        // Arrange
+        var passengerId = Guid.NewGuid();
+        var flight = OpenFlight(2, new PassengerRegistered(FlightId, passengerId, "Ada"));
+
+        // Act / Assert
+        await Assert.That(() => flight.RegisterPassenger(new RegisterPassenger(FlightId, passengerId, "Ada")))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task RegisterPassenger_is_rejected_when_flight_is_full()
+    {
+        // Arrange
+        var flight = OpenFlight(1, new PassengerRegistered(FlightId, Guid.NewGuid(), "Ada"));
+
+        // Act / Assert
+        await Assert.That(() => flight.RegisterPassenger(new RegisterPassenger(FlightId, Guid.NewGuid(), "Grace")))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task AssignSeat_emits_seat_assigned_event()
+    {
+        // Arrange
+        var passengerId = Guid.NewGuid();
+        var flight = OpenFlight(2, new PassengerRegistered(FlightId, passengerId, "Ada"));
+
+        // Act
+        flight.AssignSeat(new AssignSeat(FlightId, passengerId, "1A"));
+
+        // Assert
+        await Assert.That(flight.GetUncommittedEvents().Single())
+            .IsEqualTo(new SeatAssigned(FlightId, passengerId, "1A"));
+    }
+
+    [Test]
+    public async Task AssignSeat_is_rejected_for_unregistered_passenger()
+    {
+        // Arrange
+        var flight = OpenFlight();
+
+        // Act / Assert
+        await Assert.That(() => flight.AssignSeat(new AssignSeat(FlightId, Guid.NewGuid(), "1A")))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task AssignSeat_is_rejected_when_seat_is_taken()
+    {
+        // Arrange
+        var ada = Guid.NewGuid();
+        var grace = Guid.NewGuid();
+        var flight = OpenFlight(
+            2,
+            new PassengerRegistered(FlightId, ada, "Ada"),
+            new PassengerRegistered(FlightId, grace, "Grace"),
+            new SeatAssigned(FlightId, ada, "1A"));
+
+        // Act / Assert
+        await Assert.That(() => flight.AssignSeat(new AssignSeat(FlightId, grace, "1A")))
+            .Throws<DomainException>();
     }
 }
