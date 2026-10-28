@@ -67,7 +67,16 @@ public class Flight
 
     public void CheckIn(CheckInPassenger command)
     {
-        // TODO: check-in opens once registration is closed; reject unregistered or already checked-in passengers, then raise PassengerCheckedIn
+        if (Registration != RegistrationStatus.Closed)
+            throw new DomainException("Check-in opens once registration is closed.");
+
+        if (!_passengerIds.Contains(command.PassengerId))
+            throw new DomainException("Passenger is not registered.");
+
+        if (_checkedInPassengerIds.Contains(command.PassengerId))
+            throw new DomainException("Passenger is already checked in.");
+
+        Raise(new PassengerCheckedIn(command.FlightId, command.PassengerId));
     }
 
     public void CloseRegistration(CloseRegistration command)
