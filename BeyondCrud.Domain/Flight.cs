@@ -55,7 +55,17 @@ public class Flight
                 Capacity = e.Capacity;
                 break;
 
-            // TODO: fold RegistrationOpened, PassengerRegistered and RegistrationClosed into state
+            case RegistrationOpened:
+                Registration = RegistrationStatus.Open;
+                break;
+
+            case PassengerRegistered e:
+                _passengerIds.Add(e.PassengerId);
+                break;
+
+            case RegistrationClosed:
+                Registration = RegistrationStatus.Closed;
+                break;
         }
     }
 }
