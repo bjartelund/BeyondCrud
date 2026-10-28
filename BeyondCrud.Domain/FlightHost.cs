@@ -46,7 +46,7 @@ public sealed class FlightHost
 
     private async Task ProcessMessages()
     {
-        // TODO: read messages one at a time from the mailbox and handle each against _flight
-        await Task.CompletedTask;
+        await foreach (var message in _mailbox.Reader.ReadAllAsync())
+            message(_flight);
     }
 }
