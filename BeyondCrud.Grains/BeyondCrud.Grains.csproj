@@ -17,6 +17,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\BeyondCrud.Domain\BeyondCrud.Domain.csproj"/>
+        <ProjectReference Include="..\BeyondCrud.Infrastructure\BeyondCrud.Infrastructure.csproj"/>
     </ItemGroup>
 
 </Project>

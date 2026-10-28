@@ -1,11 +1,21 @@
 using BeyondCrud.Domain;
 using BeyondCrud.Domain.Commands;
+using BeyondCrud.Infrastructure;
 
 namespace BeyondCrud.Grains;
 
-public class FlightGrain : Grain, IFlightGrain
+public class FlightGrain(IEventStore eventStore) : Grain, IFlightGrain
 {
-    private readonly Flight _flight = new();
+    private Flight _flight = new();
+    private long _version = -1;
+
+    private string StreamName => $"flight-{this.GetPrimaryKey()}";
+
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        // TODO: read the flight's stream, rebuild _flight from it and remember the stream version
+        await Task.CompletedTask;
+    }
 
     public Task Create(CreateFlight command)
         => Execute(() => _flight.Create(command));
@@ -32,16 +42,18 @@ public class FlightGrain : Grain, IFlightGrain
                 _flight.PassengerIds.ToArray(),
                 new Dictionary<string, Guid>(_flight.Seats)));
 
-    private static Task Execute(Action handle)
+    private async Task Execute(Action handle)
     {
         try
         {
             handle();
-            return Task.CompletedTask;
         }
         catch (DomainException exception)
         {
             throw new CommandRejectedException(exception.Message);
         }
+
+        // TODO: append the new events to the stream (expecting _version), advance _version and clear them
+        await Task.CompletedTask;
     }
 }

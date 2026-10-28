@@ -1,4 +1,6 @@
 using IConfiguration = Microsoft.Extensions.Configuration.IConfiguration;
+using BeyondCrud.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Orleans.Hosting;
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -8,6 +10,9 @@ namespace BeyondCrud.Grains.Tests;
 
 public class ClusterFixture : IAsyncInitializer, IAsyncDisposable
 {
+    // The silos run in this process, so tests can look at the same store the grains write to.
+    public static InMemoryEventStore EventStore { get; } = new();
+
     public TestCluster Cluster { get; private set; } = null!;
 
     public async Task InitializeAsync()
@@ -26,7 +31,10 @@ public class ClusterFixture : IAsyncInitializer, IAsyncDisposable
     private class SiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
-            => siloBuilder.Services.AddSerializer(serializer => serializer.AddDomainSerialization());
+        {
+            siloBuilder.Services.AddSerializer(serializer => serializer.AddDomainSerialization());
+            siloBuilder.Services.AddSingleton<IEventStore>(EventStore);
+        }
     }
 
     private class ClientConfigurator : IClientBuilderConfigurator

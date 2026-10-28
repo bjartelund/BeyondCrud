@@ -5,6 +5,7 @@
   <Project Path="BeyondCrud.Domain/BeyondCrud.Domain.csproj" />
   <Project Path="BeyondCrud.Grains.Tests/BeyondCrud.Grains.Tests.csproj" />
   <Project Path="BeyondCrud.Grains/BeyondCrud.Grains.csproj" />
+  <Project Path="BeyondCrud.Infrastructure/BeyondCrud.Infrastructure.csproj" />
   <Project Path="BeyondCrud.ServiceDefaults/BeyondCrud.ServiceDefaults.csproj" />
   <Project Path="BeyondCrud.Silo/BeyondCrud.Silo.csproj" />
   <Project Path="BeyondCrud.Web/BeyondCrud.Web.csproj" />

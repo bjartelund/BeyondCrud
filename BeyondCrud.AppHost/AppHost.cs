@@ -8,10 +8,27 @@ const string gatewayPort = "41112";
 var orleans = builder.AddOrleans("cluster")
     .WithDevelopmentClustering();
 
+var eventStore = builder.AddContainer("eventstore", "eventstore/eventstore", "24.10")
+    .WithHttpEndpoint(port: 2113, targetPort: 2113, name: "http")
+    .WithEnvironment("EVENTSTORE_CLUSTER_SIZE", "1")
+    .WithEnvironment("EVENTSTORE_RUN_PROJECTIONS", "All")
+    .WithEnvironment("EVENTSTORE_START_STANDARD_PROJECTIONS", "true")
+    .WithEnvironment("EVENTSTORE_INSECURE", "true")
+    .WithEnvironment("EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP", "true")
+    .WithVolume("beyondcrud-eventstore-data", "/var/lib/eventstore")
+    .WithHttpHealthCheck("/health/live", statusCode: 204, endpointName: "http");
+
+var eventStoreEndpoint = eventStore.GetEndpoint("http");
+
 var silo = builder.AddProject<Projects.BeyondCrud_Silo>("silo")
     .WithReference(orleans)
     .WithEnvironment("Orleans__Endpoints__SiloPort", siloPort)
     .WithEnvironment("Orleans__Endpoints__GatewayPort", gatewayPort)
+    .WithEnvironment(
+        "ConnectionStrings__eventstore",
+        ReferenceExpression.Create(
+            $"esdb://{eventStoreEndpoint.Property(EndpointProperty.Host)}:{eventStoreEndpoint.Property(EndpointProperty.Port)}?tls=false"))
+    .WaitFor(eventStore)
     .WithHttpHealthCheck("/health");
 
 var apiService = builder.AddProject<Projects.BeyondCrud_ApiService>("apiservice")

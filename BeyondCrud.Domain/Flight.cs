@@ -19,6 +19,9 @@ public class Flight
     public IReadOnlyList<IDomainEvent> GetUncommittedEvents()
         => _events;
 
+    public void ClearUncommittedEvents()
+        => _events.Clear();
+
     public static Flight Rehydrate(IEnumerable<IDomainEvent> history)
     {
         var flight = new Flight();

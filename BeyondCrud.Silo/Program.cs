@@ -1,4 +1,5 @@
 using BeyondCrud.Grains;
+using BeyondCrud.Infrastructure;
 using BeyondCrud.ServiceDefaults;
 using System.Net;
 using Orleans.Serialization;
@@ -17,6 +18,9 @@ builder.UseOrleans(silo =>
         silo.ConfigureEndpoints(IPAddress.Loopback, silos, gateways);
 });
 builder.Services.AddSerializer(serializer => serializer.AddDomainSerialization());
+builder.Services.AddEventStoreDb(
+    builder.Configuration.GetConnectionString("eventstore")
+    ?? throw new InvalidOperationException("Missing connection string 'eventstore'."));
 
 var app = builder.Build();
 
