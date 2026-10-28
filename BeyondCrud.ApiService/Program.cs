@@ -1,4 +1,5 @@
 using BeyondCrud.Domain;
+using BeyondCrud.Domain.Commands;
 using BeyondCrud.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,8 +31,9 @@ app.MapPost("/demo", (string name) =>
     var passenger = new Passenger();
 
     passenger.Register(
-        Guid.CreateVersion7(),
-        name);
+        new RegisterPassenger(
+            Guid.CreateVersion7(),
+            name));
 
     return passenger.GetUncommittedEvents();
 });

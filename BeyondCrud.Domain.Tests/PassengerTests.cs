@@ -1,3 +1,4 @@
+using BeyondCrud.Domain.Commands;
 using BeyondCrud.Domain.Events;
 
 namespace BeyondCrud.Domain.Tests;
@@ -14,8 +15,9 @@ public class PassengerTests
 
         // Act
         passenger.Register(
-            passengerId,
-            "Bjarte");
+            new RegisterPassenger(
+                passengerId,
+                "Bjarte"));
 
         // Assert
         await Assert.That(passenger.GetUncommittedEvents())

@@ -1,23 +1,16 @@
-using BeyondCrud.Domain.Events;
+using BeyondCrud.Domain.Commands;
 
 namespace BeyondCrud.Domain;
 
 public class Passenger
 {
-    private readonly List<object> _events = [];
+    private readonly List<IDomainEvent> _events = [];
 
-    public IReadOnlyList<object> GetUncommittedEvents()
+    public IReadOnlyList<IDomainEvent> GetUncommittedEvents()
         => _events;
 
-    public void Register(
-        Guid passengerId,
-        string name)
+    public void Register(RegisterPassenger command)
     {
-        var @event =
-            new PassengerRegistered(
-                passengerId,
-                name);
-
-        _events.Add(@event);
+        // TODO: record that the passenger was registered by adding a PassengerRegistered event
     }
 }
