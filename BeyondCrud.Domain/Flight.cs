@@ -17,7 +17,7 @@ public class Flight
 
     public void OpenRegistration(OpenRegistration command)
     {
-        // TODO: record that registration was opened
+        _events.Add(new RegistrationOpened(command.FlightId));
     }
 
     public void RegisterPassenger(RegisterPassenger command)
@@ -27,6 +27,6 @@ public class Flight
 
     public void CloseRegistration(CloseRegistration command)
     {
-        // TODO: record that registration was closed
+        _events.Add(new RegistrationClosed(command.FlightId));
     }
 }
