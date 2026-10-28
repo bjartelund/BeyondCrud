@@ -20,21 +20,23 @@ var eventStore = builder.AddContainer("eventstore", "eventstore/eventstore", "24
 
 var eventStoreEndpoint = eventStore.GetEndpoint("http");
 
+var eventStoreConnectionString = ReferenceExpression.Create(
+    $"esdb://{eventStoreEndpoint.Property(EndpointProperty.Host)}:{eventStoreEndpoint.Property(EndpointProperty.Port)}?tls=false");
+
 var silo = builder.AddProject<Projects.BeyondCrud_Silo>("silo")
     .WithReference(orleans)
     .WithEnvironment("Orleans__Endpoints__SiloPort", siloPort)
     .WithEnvironment("Orleans__Endpoints__GatewayPort", gatewayPort)
-    .WithEnvironment(
-        "ConnectionStrings__eventstore",
-        ReferenceExpression.Create(
-            $"esdb://{eventStoreEndpoint.Property(EndpointProperty.Host)}:{eventStoreEndpoint.Property(EndpointProperty.Port)}?tls=false"))
+    .WithEnvironment("ConnectionStrings__eventstore", eventStoreConnectionString)
     .WaitFor(eventStore)
     .WithHttpHealthCheck("/health");
 
 var apiService = builder.AddProject<Projects.BeyondCrud_ApiService>("apiservice")
     .WithReference(orleans.AsClient())
     .WithEnvironment("Orleans__Endpoints__GatewayPort", gatewayPort)
+    .WithEnvironment("ConnectionStrings__eventstore", eventStoreConnectionString)
     .WaitFor(silo)
+    .WaitFor(eventStore)
     .WithHttpHealthCheck("/health");
 
 builder.AddProject<Projects.BeyondCrud_Web>("webfrontend")

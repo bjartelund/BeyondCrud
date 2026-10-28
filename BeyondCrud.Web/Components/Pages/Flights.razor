@@ -1,0 +1,80 @@
+@page "/flights"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Flights</PageTitle>
+
+<h1>Flights</h1>
+
+<p class="text-muted">
+    Read from the projection, which follows the event streams. It trails the write side by a moment.
+</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-warning">@_error</div>
+}
+else if (_flights.Count == 0)
+{
+    <p>No flights yet. Create one from the Home page.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Destination</th>
+            <th>Registration</th>
+            <th>Passengers</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var flight in _flights)
+        {
+            <tr>
+                <td>@flight.Destination</td>
+                <td>@flight.RegistrationName</td>
+                <td>@flight.Passengers.Count / @flight.Capacity (@string.Join(", ", flight.Passengers))</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private record FlightRow(Guid FlightId, string Destination, int Capacity, int Registration, List<string> Passengers)
+    {
+        public string RegistrationName => Registration switch { 1 => "Open", 2 => "Closed", _ => "Not open" };
+    }
+
+    private List<FlightRow> _flights = [];
+    private string? _error;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        _timer = new Timer(async _ => await InvokeAsync(async () =>
+        {
+            await Refresh();
+            StateHasChanged();
+        }), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("apiservice");
+            _flights = await client.GetFromJsonAsync<List<FlightRow>>("/read/flights") ?? [];
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load flights: {ex.Message}";
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

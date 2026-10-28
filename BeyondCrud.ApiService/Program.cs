@@ -1,5 +1,7 @@
 using BeyondCrud.Domain.Commands;
 using BeyondCrud.Grains;
+using BeyondCrud.Infrastructure;
+using BeyondCrud.Projections;
 using BeyondCrud.ServiceDefaults;
 using Orleans.Serialization;
 
@@ -24,6 +26,12 @@ builder.Services.AddSerializer(serializer => serializer.AddDomainSerialization()
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
+
+// The read side: follows the event streams and keeps an in-memory flight list up to date.
+builder.Services.AddEventStoreDb(
+    builder.Configuration.GetConnectionString("eventstore")
+    ?? throw new InvalidOperationException("Missing connection string 'eventstore'."));
+builder.Services.AddFlightProjections();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -65,6 +73,13 @@ app.MapPost("/flights", async (string destination, int? capacity, IGrainFactory 
 
 app.MapGet("/flights/{flightId:guid}", async (Guid flightId, IGrainFactory grains)
     => await grains.GetGrain<IFlightGrain>(flightId).GetSummary());
+
+// Queries go to the read model, commands go to the grains. The read model is eventually consistent.
+app.MapGet("/read/flights", (FlightListReadModel readModel)
+    => readModel.List());
+
+app.MapGet("/read/flights/{flightId:guid}", (Guid flightId, FlightListReadModel readModel)
+    => readModel.Get(flightId) is { } flight ? Results.Ok(flight) : Results.NotFound());
 
 app.MapPost("/flights/{flightId:guid}/registration/open", (Guid flightId, IGrainFactory grains)
     => Rejectable(() => grains.GetGrain<IFlightGrain>(flightId)

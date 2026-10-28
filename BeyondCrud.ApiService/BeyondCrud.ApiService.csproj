@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\BeyondCrud.Grains\BeyondCrud.Grains.csproj" />
+        <ProjectReference Include="..\BeyondCrud.Projections\BeyondCrud.Projections.csproj" />
         <ProjectReference Include="..\BeyondCrud.ServiceDefaults\BeyondCrud.ServiceDefaults.csproj"/>
     </ItemGroup>
 
