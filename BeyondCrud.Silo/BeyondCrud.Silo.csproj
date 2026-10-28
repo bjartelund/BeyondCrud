@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Orleans.Server" Version="10.4.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\BeyondCrud.Grains\BeyondCrud.Grains.csproj"/>
+        <ProjectReference Include="..\BeyondCrud.ServiceDefaults\BeyondCrud.ServiceDefaults.csproj"/>
+    </ItemGroup>
+
+</Project>
