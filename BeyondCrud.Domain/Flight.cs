@@ -8,6 +8,7 @@ public class Flight
     private readonly List<IDomainEvent> _events = [];
     private readonly List<Guid> _passengerIds = [];
     private readonly Dictionary<string, Guid> _seats = [];
+    private readonly HashSet<Guid> _checkedInPassengerIds = [];
 
     public Guid Id { get; private set; }
     public string Destination { get; private set; } = "";
@@ -15,6 +16,7 @@ public class Flight
     public RegistrationStatus Registration { get; private set; }
     public IReadOnlyList<Guid> PassengerIds => _passengerIds;
     public IReadOnlyDictionary<string, Guid> Seats => _seats;
+    public IReadOnlyCollection<Guid> CheckedInPassengerIds => _checkedInPassengerIds;
 
     public IReadOnlyList<IDomainEvent> GetUncommittedEvents()
         => _events;
@@ -63,6 +65,11 @@ public class Flight
         Raise(new SeatAssigned(command.FlightId, command.PassengerId, command.Seat));
     }
 
+    public void CheckIn(CheckInPassenger command)
+    {
+        // TODO: check-in opens once registration is closed; reject unregistered or already checked-in passengers, then raise PassengerCheckedIn
+    }
+
     public void CloseRegistration(CloseRegistration command)
         => Raise(new RegistrationClosed(command.FlightId));
 
@@ -96,6 +103,10 @@ public class Flight
 
             case SeatAssigned e:
                 _seats[e.Seat] = e.PassengerId;
+                break;
+
+            case PassengerCheckedIn e:
+                _checkedInPassengerIds.Add(e.PassengerId);
                 break;
         }
     }

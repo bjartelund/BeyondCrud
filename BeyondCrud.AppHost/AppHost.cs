@@ -16,7 +16,8 @@ var eventStore = builder.AddContainer("eventstore", "eventstore/eventstore", "24
     .WithEnvironment("EVENTSTORE_INSECURE", "true")
     .WithEnvironment("EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP", "true")
     .WithVolume("beyondcrud-eventstore-data", "/var/lib/eventstore")
-    .WithHttpHealthCheck("/health/live", statusCode: 204, endpointName: "http");
+    .WithHttpHealthCheck("/health/live", statusCode: 204, endpointName: "http")
+    .WithUrlForEndpoint("http", url => url.DisplayText = "EventStoreDB UI");
 
 var eventStoreEndpoint = eventStore.GetEndpoint("http");
 

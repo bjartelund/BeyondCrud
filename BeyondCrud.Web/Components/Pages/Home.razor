@@ -1,45 +1,275 @@
 @page "/"
 @rendermode InteractiveServer
+@implements IDisposable
+@using System.Text.Json
 @inject IHttpClientFactory HttpClientFactory
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Flight desk</PageTitle>
 
-<h1>Create passenger</h1>
+<h1>Flight desk</h1>
 
-<div class="mb-3">
-    <label for="name" class="form-label">Name</label>
-    <input id="name" class="form-control" @bind="_name" @bind:event="oninput" />
+<p class="text-muted">
+    Commands go through the flight grain. The flight list and passengers come from the projection,
+    so they trail the write side by a moment. The event log is the stream itself.
+</p>
+
+@if (_message is not null)
+{
+    <div class="alert @(_messageIsError ? "alert-warning" : "alert-info")">@_message</div>
+}
+
+<div class="row g-2 mb-4">
+    <div class="col-auto">
+        <input class="form-control" placeholder="Destination" @bind="_destination" @bind:event="oninput" />
+    </div>
+    <div class="col-auto">
+        <input class="form-control" type="number" min="1" style="width: 6rem" @bind="_capacity" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="CreateFlight" disabled="@string.IsNullOrWhiteSpace(_destination)">Create flight</button>
+    </div>
 </div>
 
-<button class="btn btn-primary mb-3" @onclick="CreatePassenger" disabled="@_busy">Create passenger</button>
+@if (_flights.Count == 0)
+{
+    <p>No flights yet.</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+        <tr>
+            <th>Destination</th>
+            <th>Registration</th>
+            <th>Passengers</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var flight in _flights)
+        {
+            <tr class="@(flight.FlightId == _selectedId ? "table-active" : "")">
+                <td>@flight.Destination</td>
+                <td>@flight.RegistrationName</td>
+                <td>@flight.Passengers.Count / @flight.Capacity</td>
+                <td><button class="btn btn-sm btn-outline-secondary" @onclick="() => Select(flight.FlightId)">Select</button></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
 
-<div class="mb-3">
-    <label for="response" class="form-label">Response</label>
-    <textarea id="response" class="form-control" rows="10" readonly>@_response</textarea>
-</div>
+@if (Selected is { } selected)
+{
+    <h2>@selected.Destination</h2>
+
+    <div class="mb-3">
+        <button class="btn btn-outline-primary me-2" disabled="@(selected.Registration != 0)"
+                @onclick='() => Post($"/flights/{selected.FlightId}/registration/open")'>Open registration</button>
+        <button class="btn btn-outline-primary" disabled="@(selected.Registration != 1)"
+                @onclick='() => Post($"/flights/{selected.FlightId}/registration/close")'>Close registration</button>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            <input class="form-control" placeholder="Passenger name" @bind="_passengerName" @bind:event="oninput" />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" disabled="@(selected.Registration != 1 || string.IsNullOrWhiteSpace(_passengerName))"
+                    @onclick="RegisterPassenger">Register passenger</button>
+        </div>
+    </div>
+
+    @if (selected.Passengers.Count > 0)
+    {
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Passenger</th>
+                <th>Seat</th>
+                <th>Checked in</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var passenger in selected.Passengers)
+            {
+                <tr>
+                    <td>@passenger.Name</td>
+                    <td>
+                        @if (passenger.Seat is not null)
+                        {
+                            @passenger.Seat
+                        }
+                        else
+                        {
+                            <input class="form-control form-control-sm d-inline-block" style="width: 5rem" placeholder="1A"
+                                   @bind="SeatInput(passenger.PassengerId).Value" @bind:event="oninput" />
+                            <button class="btn btn-sm btn-outline-secondary ms-1"
+                                    @onclick="() => AssignSeat(selected.FlightId, passenger.PassengerId)">Assign</button>
+                        }
+                    </td>
+                    <td>@(passenger.CheckedIn ? "Yes" : "No")</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-success" disabled="@(passenger.CheckedIn)"
+                                @onclick='() => Post($"/flights/{selected.FlightId}/passengers/{passenger.PassengerId}/check-in")'>Check in</button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <h3>Event stream</h3>
+
+    <table class="table table-sm font-monospace">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Event</th>
+            <th>Data</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var entry in _events)
+        {
+            <tr>
+                <td>@entry.Number</td>
+                <td>@entry.Type</td>
+                <td>@entry.Data.GetRawText()</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
 
 @code {
-    private string _name = "";
-    private string _response = "";
-    private bool _busy;
+    private record PassengerRow(Guid PassengerId, string Name, string? Seat, bool CheckedIn);
 
-    private async Task CreatePassenger()
+    private record FlightRow(Guid FlightId, string Destination, int Capacity, int Registration, List<PassengerRow> Passengers)
     {
-        _busy = true;
+        public string RegistrationName => Registration switch { 1 => "Open", 2 => "Closed", _ => "Not open" };
+    }
+
+    private record EventRow(int Number, string Type, JsonElement Data);
+
+    private sealed class Box
+    {
+        public string Value { get; set; } = "";
+    }
+
+    private List<FlightRow> _flights = [];
+    private List<EventRow> _events = [];
+    private readonly Dictionary<Guid, Box> _seatInputs = new();
+    private Guid? _selectedId;
+    private string _destination = "";
+    private int _capacity = 100;
+    private string _passengerName = "";
+    private string? _message;
+    private bool _messageIsError;
+    private Timer? _timer;
+
+    private FlightRow? Selected => _flights.FirstOrDefault(flight => flight.FlightId == _selectedId);
+
+    private Box SeatInput(Guid passengerId)
+    {
+        if (!_seatInputs.TryGetValue(passengerId, out var box))
+            _seatInputs[passengerId] = box = new Box();
+
+        return box;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        _timer = new Timer(async _ => await InvokeAsync(async () =>
+        {
+            await Refresh();
+            StateHasChanged();
+        }), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private async Task Refresh()
+    {
         try
         {
             var client = HttpClientFactory.CreateClient("apiservice");
-            using var response = await client.PostAsync($"/demo?name={Uri.EscapeDataString(_name)}", null);
-            var body = await response.Content.ReadAsStringAsync();
-            _response = $"{(int)response.StatusCode} {response.StatusCode}\n{body}";
+            _flights = await client.GetFromJsonAsync<List<FlightRow>>("/read/flights") ?? [];
+
+            _events = _selectedId is { } id
+                ? await client.GetFromJsonAsync<List<EventRow>>($"/flights/{id}/events") ?? []
+                : [];
         }
         catch (Exception ex)
         {
-            _response = $"Request failed: {ex.Message}";
-        }
-        finally
-        {
-            _busy = false;
+            Show($"Could not load data: {ex.Message}", isError: true);
         }
     }
+
+    private async Task Select(Guid flightId)
+    {
+        _selectedId = flightId;
+        await Refresh();
+    }
+
+    private async Task CreateFlight()
+    {
+        var client = HttpClientFactory.CreateClient("apiservice");
+        using var response = await client.PostAsync(
+            $"/flights?destination={Uri.EscapeDataString(_destination)}&capacity={_capacity}", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var created = await response.Content.ReadFromJsonAsync<JsonElement>();
+            _selectedId = created.GetProperty("flightId").GetGuid();
+            _destination = "";
+        }
+
+        await Report(response);
+    }
+
+    private async Task RegisterPassenger()
+    {
+        if (_selectedId is not { } flightId)
+            return;
+
+        if (await Post($"/flights/{flightId}/passengers?name={Uri.EscapeDataString(_passengerName)}"))
+            _passengerName = "";
+    }
+
+    private Task AssignSeat(Guid flightId, Guid passengerId)
+        => Post($"/flights/{flightId}/passengers/{passengerId}/seat?seat={Uri.EscapeDataString(SeatInput(passengerId).Value)}");
+
+    private async Task<bool> Post(string url)
+    {
+        var client = HttpClientFactory.CreateClient("apiservice");
+        using var response = await client.PostAsync(url, null);
+
+        await Report(response);
+
+        return response.IsSuccessStatusCode;
+    }
+
+    private async Task Report(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            Show(null, isError: false);
+        }
+        else
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            Show($"Rejected ({(int)response.StatusCode}): {body}", isError: true);
+        }
+
+        await Refresh();
+    }
+
+    private void Show(string? message, bool isError)
+    {
+        _message = message;
+        _messageIsError = isError;
+    }
+
+    public void Dispose() => _timer?.Dispose();
 }

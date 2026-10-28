@@ -92,7 +92,8 @@ public class FlightGrainPersistenceTests(ClusterFixture fixture)
             new RegistrationOpened(flightId),
             new PassengerRegistered(flightId, passengerId, "Ada"),
             new SeatAssigned(flightId, passengerId, "1A"),
-            new RegistrationClosed(flightId)
+            new RegistrationClosed(flightId),
+            new PassengerCheckedIn(flightId, passengerId)
         ];
 
         // Act

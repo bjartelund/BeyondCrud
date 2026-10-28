@@ -217,4 +217,61 @@ public class FlightTests
         await Assert.That(() => flight.AssignSeat(new AssignSeat(FlightId, grace, "1A")))
             .Throws<DomainException>();
     }
+
+    [Test]
+    public async Task CheckIn_emits_passenger_checked_in_event()
+    {
+        // Arrange
+        var passengerId = Guid.NewGuid();
+        var flight = OpenFlight(
+            2,
+            new PassengerRegistered(FlightId, passengerId, "Ada"),
+            new RegistrationClosed(FlightId));
+
+        // Act
+        flight.CheckIn(new CheckInPassenger(FlightId, passengerId));
+
+        // Assert
+        await Assert.That(flight.GetUncommittedEvents().Single())
+            .IsEqualTo(new PassengerCheckedIn(FlightId, passengerId));
+    }
+
+    [Test]
+    public async Task CheckIn_is_rejected_while_registration_is_still_open()
+    {
+        // Arrange
+        var passengerId = Guid.NewGuid();
+        var flight = OpenFlight(2, new PassengerRegistered(FlightId, passengerId, "Ada"));
+
+        // Act / Assert
+        await Assert.That(() => flight.CheckIn(new CheckInPassenger(FlightId, passengerId)))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task CheckIn_is_rejected_for_unregistered_passenger()
+    {
+        // Arrange
+        var flight = OpenFlight(2, new RegistrationClosed(FlightId));
+
+        // Act / Assert
+        await Assert.That(() => flight.CheckIn(new CheckInPassenger(FlightId, Guid.NewGuid())))
+            .Throws<DomainException>();
+    }
+
+    [Test]
+    public async Task CheckIn_is_rejected_when_already_checked_in()
+    {
+        // Arrange
+        var passengerId = Guid.NewGuid();
+        var flight = OpenFlight(
+            2,
+            new PassengerRegistered(FlightId, passengerId, "Ada"),
+            new RegistrationClosed(FlightId),
+            new PassengerCheckedIn(FlightId, passengerId));
+
+        // Act / Assert
+        await Assert.That(() => flight.CheckIn(new CheckInPassenger(FlightId, passengerId)))
+            .Throws<DomainException>();
+    }
 }

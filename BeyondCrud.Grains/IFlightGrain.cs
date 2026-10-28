@@ -14,5 +14,7 @@ public interface IFlightGrain : IGrainWithGuidKey
 
     Task AssignSeat(AssignSeat command);
 
+    Task CheckInPassenger(CheckInPassenger command);
+
     Task<FlightSummary> GetSummary();
 }

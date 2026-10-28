@@ -7,4 +7,6 @@ public record FlightListItem(
     string Destination,
     int Capacity,
     RegistrationStatus Registration,
-    IReadOnlyList<string> Passengers);
+    IReadOnlyList<FlightPassenger> Passengers);
+
+public record FlightPassenger(Guid PassengerId, string Name, string? Seat, bool CheckedIn);

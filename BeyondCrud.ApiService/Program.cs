@@ -74,6 +74,11 @@ app.MapPost("/flights", async (string destination, int? capacity, IGrainFactory 
 app.MapGet("/flights/{flightId:guid}", async (Guid flightId, IGrainFactory grains)
     => await grains.GetGrain<IFlightGrain>(flightId).GetSummary());
 
+// The raw stream, as stored: the source of truth the grain and the projection both read.
+app.MapGet("/flights/{flightId:guid}/events", async (Guid flightId, IEventStore eventStore)
+    => (await eventStore.ReadStream(FlightGrain.StreamNameFor(flightId)))
+        .Select((@event, number) => new { Number = number, Type = @event.GetType().Name, Data = (object)@event }));
+
 // Queries go to the read model, commands go to the grains. The read model is eventually consistent.
 app.MapGet("/read/flights", (FlightListReadModel readModel)
     => readModel.List());
@@ -103,6 +108,11 @@ app.MapPost("/flights/{flightId:guid}/passengers/{passengerId:guid}/seat",
     (Guid flightId, Guid passengerId, string seat, IGrainFactory grains)
         => Rejectable(() => grains.GetGrain<IFlightGrain>(flightId)
             .AssignSeat(new AssignSeat(flightId, passengerId, seat))));
+
+app.MapPost("/flights/{flightId:guid}/passengers/{passengerId:guid}/check-in",
+    (Guid flightId, Guid passengerId, IGrainFactory grains)
+        => Rejectable(() => grains.GetGrain<IFlightGrain>(flightId)
+            .CheckInPassenger(new CheckInPassenger(flightId, passengerId))));
 
 app.MapDefaultEndpoints();
 

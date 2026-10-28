@@ -63,7 +63,31 @@ public class FlightListProjectionTests
             new PassengerRegistered(FlightId, Guid.NewGuid(), "Grace"));
 
         // Assert
-        await Assert.That(readModel.Get(FlightId)!.Passengers).IsEquivalentTo(new[] { "Ada", "Grace" });
+        await Assert.That(readModel.Get(FlightId)!.Passengers.Select(p => p.Name)).IsEquivalentTo(new[] { "Ada", "Grace" });
+    }
+
+    [Test]
+    public async Task Seat_assignment_and_check_in_show_on_the_passenger()
+    {
+        // Arrange
+        var (readModel, projection) = Setup();
+        var ada = Guid.NewGuid();
+        var grace = Guid.NewGuid();
+
+        // Act
+        Apply(
+            projection,
+            new FlightCreated(FlightId, "Oslo", 2),
+            new PassengerRegistered(FlightId, ada, "Ada"),
+            new PassengerRegistered(FlightId, grace, "Grace"),
+            new SeatAssigned(FlightId, ada, "1A"),
+            new PassengerCheckedIn(FlightId, ada));
+
+        // Assert
+        var passengers = readModel.Get(FlightId)!.Passengers;
+
+        await Assert.That(passengers.Single(p => p.PassengerId == ada)).IsEqualTo(new FlightPassenger(ada, "Ada", "1A", true));
+        await Assert.That(passengers.Single(p => p.PassengerId == grace)).IsEqualTo(new FlightPassenger(grace, "Grace", null, false));
     }
 
     [Test]

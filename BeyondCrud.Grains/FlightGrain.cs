@@ -9,7 +9,9 @@ public class FlightGrain(IEventStore eventStore) : Grain, IFlightGrain
     private Flight _flight = new();
     private long _version = -1;
 
-    private string StreamName => $"flight-{this.GetPrimaryKey()}";
+    public static string StreamNameFor(Guid flightId) => $"flight-{flightId}";
+
+    private string StreamName => StreamNameFor(this.GetPrimaryKey());
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
@@ -34,6 +36,9 @@ public class FlightGrain(IEventStore eventStore) : Grain, IFlightGrain
     public Task AssignSeat(AssignSeat command)
         => Execute(() => _flight.AssignSeat(command));
 
+    public Task CheckInPassenger(CheckInPassenger command)
+        => Execute(() => _flight.CheckIn(command));
+
     public Task<FlightSummary> GetSummary()
         => Task.FromResult(
             new FlightSummary(
@@ -42,7 +47,8 @@ public class FlightGrain(IEventStore eventStore) : Grain, IFlightGrain
                 _flight.Capacity,
                 _flight.Registration,
                 _flight.PassengerIds.ToArray(),
-                new Dictionary<string, Guid>(_flight.Seats)));
+                new Dictionary<string, Guid>(_flight.Seats),
+                _flight.CheckedInPassengerIds.ToArray()));
 
     private async Task Execute(Action handle)
     {

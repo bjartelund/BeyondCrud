@@ -8,4 +8,5 @@ public record FlightSummary(
     int Capacity,
     RegistrationStatus Registration,
     IReadOnlyList<Guid> PassengerIds,
-    IReadOnlyDictionary<string, Guid> Seats);
+    IReadOnlyDictionary<string, Guid> Seats,
+    IReadOnlyList<Guid> CheckedInPassengerIds);
