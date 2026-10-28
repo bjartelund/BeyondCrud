@@ -1,3 +1,3 @@
 namespace BeyondCrud.Domain.Commands;
 
-public record RegisterPassenger(Guid PassengerId, string Name);
+public record RegisterPassenger(Guid FlightId, Guid PassengerId, string Name);

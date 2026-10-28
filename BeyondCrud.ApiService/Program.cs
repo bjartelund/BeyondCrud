@@ -28,14 +28,14 @@ app.MapGet("/", () => "API service is running. POST to /demo to see sample data.
 
 app.MapPost("/demo", (string name) =>
 {
-    var passenger = new Passenger();
+    var flightId = Guid.CreateVersion7();
+    var flight = new Flight();
 
-    passenger.Register(
-        new RegisterPassenger(
-            Guid.CreateVersion7(),
-            name));
+    flight.Create(new CreateFlight(flightId, "Oslo", 100));
+    flight.OpenRegistration(new OpenRegistration(flightId));
+    flight.RegisterPassenger(new RegisterPassenger(flightId, Guid.CreateVersion7(), name));
 
-    return passenger.GetUncommittedEvents();
+    return flight.GetUncommittedEvents();
 });
 
 app.MapDefaultEndpoints();
