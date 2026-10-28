@@ -17,7 +17,13 @@ public sealed class FlightListProjection(FlightListReadModel readModel)
                 readModel.Update(e.FlightId, flight => flight with { Registration = RegistrationStatus.Open });
                 break;
 
-            // TODO: PassengerRegistered adds the passenger's name, RegistrationClosed closes registration
+            case PassengerRegistered e:
+                readModel.Update(e.FlightId, flight => flight with { Passengers = [..flight.Passengers, e.Name] });
+                break;
+
+            case RegistrationClosed e:
+                readModel.Update(e.FlightId, flight => flight with { Registration = RegistrationStatus.Closed });
+                break;
         }
     }
 }
