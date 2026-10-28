@@ -37,13 +37,26 @@ public class Flight
 
     public void RegisterPassenger(RegisterPassenger command)
     {
-        // TODO: reject when registration is not open, the passenger is already registered, or the flight is full
+        if (Registration != RegistrationStatus.Open)
+            throw new DomainException("Registration is not open.");
+
+        if (_passengerIds.Contains(command.PassengerId))
+            throw new DomainException("Passenger is already registered.");
+
+        if (_passengerIds.Count >= Capacity)
+            throw new DomainException("Flight is full.");
+
         Raise(new PassengerRegistered(command.FlightId, command.PassengerId, command.Name));
     }
 
     public void AssignSeat(AssignSeat command)
     {
-        // TODO: reject when the passenger is not registered or the seat is already taken
+        if (!_passengerIds.Contains(command.PassengerId))
+            throw new DomainException("Passenger is not registered.");
+
+        if (_seats.ContainsKey(command.Seat))
+            throw new DomainException("Seat is already taken.");
+
         Raise(new SeatAssigned(command.FlightId, command.PassengerId, command.Seat));
     }
 
