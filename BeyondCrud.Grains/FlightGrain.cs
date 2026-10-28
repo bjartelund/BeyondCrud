@@ -13,8 +13,10 @@ public class FlightGrain(IEventStore eventStore) : Grain, IFlightGrain
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
-        // TODO: read the flight's stream, rebuild _flight from it and remember the stream version
-        await Task.CompletedTask;
+        var history = await eventStore.ReadStream(StreamName, cancellationToken);
+
+        _flight = Flight.Rehydrate(history);
+        _version = history.Count - 1;
     }
 
     public Task Create(CreateFlight command)
@@ -53,7 +55,20 @@ public class FlightGrain(IEventStore eventStore) : Grain, IFlightGrain
             throw new CommandRejectedException(exception.Message);
         }
 
-        // TODO: append the new events to the stream (expecting _version), advance _version and clear them
-        await Task.CompletedTask;
+        var events = _flight.GetUncommittedEvents().ToArray();
+
+        try
+        {
+            await eventStore.Append(StreamName, _version, events);
+        }
+        catch
+        {
+            // The in-memory flight is now ahead of the stream: throw it away and reload on next call.
+            DeactivateOnIdle();
+            throw;
+        }
+
+        _version += events.Length;
+        _flight.ClearUncommittedEvents();
     }
 }
