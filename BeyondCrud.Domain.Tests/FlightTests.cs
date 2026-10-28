@@ -67,4 +67,58 @@ public class FlightTests
         await Assert.That(flight.GetUncommittedEvents())
             .Contains(new RegistrationClosed(FlightId));
     }
+
+    [Test]
+    public async Task Rehydrate_restores_registration_status()
+    {
+        // Arrange
+        var history = new IDomainEvent[]
+        {
+            new FlightCreated(FlightId, "Oslo", 2),
+            new RegistrationOpened(FlightId),
+            new RegistrationClosed(FlightId)
+        };
+
+        // Act
+        var flight = Flight.Rehydrate(history);
+
+        // Assert
+        await Assert.That(flight.Registration)
+            .IsEqualTo(RegistrationStatus.Closed);
+    }
+
+    [Test]
+    public async Task Rehydrate_restores_registered_passengers()
+    {
+        // Arrange
+        var history = new IDomainEvent[]
+        {
+            new FlightCreated(FlightId, "Oslo", 2),
+            new RegistrationOpened(FlightId),
+            new PassengerRegistered(FlightId, Guid.NewGuid(), "Ada"),
+            new PassengerRegistered(FlightId, Guid.NewGuid(), "Grace")
+        };
+
+        // Act
+        var flight = Flight.Rehydrate(history);
+
+        // Assert
+        await Assert.That(flight.PassengerIds)
+            .Count().IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task Rehydrate_does_not_produce_uncommitted_events()
+    {
+        // Arrange
+        var history = new IDomainEvent[] { new FlightCreated(FlightId, "Oslo", 2) };
+
+        // Act
+        var flight = Flight.Rehydrate(history);
+        flight.OpenRegistration(new OpenRegistration(FlightId));
+
+        // Assert
+        await Assert.That(flight.GetUncommittedEvents().Single())
+            .IsEqualTo(new RegistrationOpened(FlightId));
+    }
 }
