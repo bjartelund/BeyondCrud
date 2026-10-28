@@ -14,16 +14,10 @@ public class FlightGrain : Grain, IFlightGrain
         => Execute(() => _flight.OpenRegistration(command));
 
     public Task RegisterPassenger(RegisterPassenger command)
-    {
-        // TODO: hand the command to the aggregate (see Execute)
-        throw new NotImplementedException();
-    }
+        => Execute(() => _flight.RegisterPassenger(command));
 
     public Task CloseRegistration(CloseRegistration command)
-    {
-        // TODO: hand the command to the aggregate (see Execute)
-        throw new NotImplementedException();
-    }
+        => Execute(() => _flight.CloseRegistration(command));
 
     public Task AssignSeat(AssignSeat command)
         => Execute(() => _flight.AssignSeat(command));
