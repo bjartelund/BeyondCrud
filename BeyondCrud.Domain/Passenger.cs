@@ -1,4 +1,5 @@
 using BeyondCrud.Domain.Commands;
+using BeyondCrud.Domain.Events;
 
 namespace BeyondCrud.Domain;
 
@@ -11,6 +12,6 @@ public class Passenger
 
     public void Register(RegisterPassenger command)
     {
-        // TODO: record that the passenger was registered by adding a PassengerRegistered event
+        _events.Add(new PassengerRegistered(command.PassengerId, command.Name));
     }
 }
